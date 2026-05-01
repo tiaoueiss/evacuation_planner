@@ -1,7 +1,6 @@
 # Building H - Alien Evacuation Planner
 
 CSC474 - Artificial Intelligence
-Holy Spirit University of Kaslik (USEK)
 Spring 2026
 
 ## The scenario
