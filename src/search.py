@@ -1,21 +1,3 @@
-"""
-search.py
----------
-Search algorithms for the evacuation planner.
-
-Four classical algorithms from CSC474:
-    - BFS              uninformed, ignores cost (used as a baseline)
-    - UCS  (Dijkstra)  uninformed, optimal under our cost function
-    - Greedy           informed, uses heuristic only - fast but unsafe
-    - A*               informed, uses g+h - optimal AND well-pruned
-
-Every algorithm returns the same SearchResult shape so the GUI/animator
-can swap them without caring which one it ran.
-
-The "goal" is any node tagged is_exit. We stop at the first exit popped
-from the frontier (which is the OPTIMAL one for UCS/A* by definition).
-"""
-
 from collections import deque
 import heapq
 import time

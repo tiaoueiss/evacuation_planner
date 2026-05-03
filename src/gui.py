@@ -1,16 +1,3 @@
-"""
-gui.py — USEK Building H  //  Alien Invasion Evacuation Planner
-
-Layout: MAP (960px left) | PANEL (320px right)
-
-Mouse:
-  L-click node       → set survivor start
-  R-click node       → toggle infestation
-  L-click corridor   → block / unblock
-  Panel buttons      → fully clickable (algorithm, run, compare, reset, weights)
-
-Keyboard: SPACE run  C compare  R reset  1-4 algo  +/- radiation  ESC quit
-"""
 
 import sys, os, math, random, time
 import pygame
@@ -56,7 +43,7 @@ def rtext(surf, text, x, y, font, color=GREEN, glow=False):
         surf.blit(s, (x - 1, y - 1))
     surf.blit(font.render(text, True, color), (x, y))
 
-
+# for the screen effect
 def scanlines(surf, alpha=28):
     ov = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     for y in range(0, HEIGHT, 3):
@@ -76,7 +63,7 @@ def build_vignette():
                 pygame.draw.rect(ov, (0, 0, 0, a), (bx, by, 16, 16))
     return ov
 
-
+# used to check wether the mouse is close enough to an edge to toggle it, and to draw the dashed line for blocked corridors
 def pt_seg_dist(px, py, x1, y1, x2, y2):
     dx, dy = x2 - x1, y2 - y1
     if dx == dy == 0:
@@ -159,6 +146,7 @@ class EvacuationApp:
         self.last_result  = None
         self.popup        = None
         self.mouse_pos    = (0, 0)
+        self.show_labels  = False
 
         self.vignette = build_vignette()
         self._init_buttons()
@@ -182,6 +170,7 @@ class EvacuationApp:
         half              = (bw - 6) // 2
         self.compare_rect = pygame.Rect(px,          306, half, 32)
         self.reset_rect   = pygame.Rect(px + half + 6, 306, half, 32)
+        self.labels_rect  = pygame.Rect(px, 444, bw, 24)
 
         # weight +/- (3 rows at y = 366, 390, 414)
         bx = px + bw - 26
@@ -424,6 +413,10 @@ class EvacuationApp:
                 self.weights[key] = max(0.0, min(WEIGHT_MAX[key], round(val, 1)))
                 audio.play("blip_lo")
                 return
+        if self.labels_rect.collidepoint(pos):
+            self.show_labels = not self.show_labels
+            audio.play("blip_lo")
+            return
 
     # ── actions ───────────────────────────────────────────────────────────────
 
@@ -565,6 +558,19 @@ class EvacuationApp:
                        "stairs":   AMBER}.get(edge.kind, GREEN_DIM)
                 pygame.draw.line(self.screen, col, (u.x, u.y), (v.x, v.y),
                                  3 if edge.kind != "corridor" else 2)
+                if self.show_labels:
+                    cost = self.city.edge_cost(edge, self.weights)
+                    mx, my = (u.x + v.x) / 2, (u.y + v.y) / 2
+                    dx, dy = v.x - u.x, v.y - u.y
+                    d = math.hypot(dx, dy)
+                    ox, oy = (-dy / d * 10, dx / d * 10) if d > 0 else (0, -10)
+                    lbl = self.font_small.render(f"{cost:.0f}", True, AMBER)
+                    lx = int(mx + ox) - lbl.get_width() // 2
+                    ly = int(my + oy) - lbl.get_height() // 2
+                    bg = pygame.Surface((lbl.get_width() + 4, lbl.get_height() + 2), pygame.SRCALPHA)
+                    bg.fill((0, 0, 0, 185))
+                    self.screen.blit(bg, (lx - 2, ly - 1))
+                    self.screen.blit(lbl, (lx, ly))
 
     def _draw_path(self):
         if self.path_anim is None:
@@ -589,6 +595,10 @@ class EvacuationApp:
 
     def _draw_nodes(self):
         t = time.time()
+        show_h = self.show_labels and self.algorithm in ("Greedy", "A*")
+        exits_list = self.city.exits() if show_h else []
+        h_scale = self.weights.get("distance", 1.0) if self.algorithm == "A*" else 1.0
+
         for node in self.city.nodes.values():
             cx, cy = int(node.x), int(node.y)
 
@@ -634,6 +644,17 @@ class EvacuationApp:
             lbg.fill((0, 0, 0, 175))
             self.screen.blit(lbg, (cx - ls.get_width() // 2 - 3, cy + NODE_RADIUS + 4))
             self.screen.blit(ls,  (cx - ls.get_width() // 2,     cy + NODE_RADIUS + 5))
+
+            if show_h and exits_list and not node.is_exit:
+                raw_h = min(self.city.heuristic(node.id, e) for e in exits_list)
+                h_val = h_scale * raw_h
+                hs  = self.font_small.render(f"h={h_val:.0f}", True, (100, 200, 255))
+                hbg = pygame.Surface((hs.get_width() + 4, hs.get_height() + 2), pygame.SRCALPHA)
+                hbg.fill((0, 0, 0, 175))
+                hx = cx - hs.get_width() // 2 - 2
+                hy = cy - NODE_RADIUS - hs.get_height() - 4
+                self.screen.blit(hbg, (hx, hy))
+                self.screen.blit(hs,  (hx + 2, hy + 1))
 
     def _draw_panel(self):
         pygame.draw.rect(self.screen, PANEL_BG, (PANEL_X, 0, PANEL_W, HEIGHT))
@@ -722,12 +743,22 @@ class EvacuationApp:
 
         pygame.draw.line(self.screen, GREEN_DIM, (px, 440), (px + bw, 440))
 
+        # labels toggle
+        lbl_state = "ON" if self.show_labels else "OFF"
+        lbl_color = GREEN if self.show_labels else GRAY
+        self._btn(self.labels_rect, f"[L] SHOW LABELS: {lbl_state}", self.font_small,
+                  active=self.show_labels,
+                  hover=self.labels_rect.collidepoint(mpos),
+                  accent=lbl_color)
+
+        pygame.draw.line(self.screen, GREEN_DIM, (px, 472), (px + bw, 472))
+
         # last result
-        rtext(self.screen, "LAST RESULT", px, 446, self.font_small, AMBER)
+        rtext(self.screen, "LAST RESULT", px, 476, self.font_small, AMBER)
         if self.last_result:
             r = self.last_result
             if r.found:
-                rtext(self.screen, "ROUTE FOUND", px, 463, self.font_med, GREEN, glow=True)
+                rtext(self.screen, "ROUTE FOUND", px, 493, self.font_med, GREEN, glow=True)
                 goal_lbl = self.city.nodes[r.goal_id].label
                 for i, line in enumerate([
                     f"  exit  : {goal_lbl}",
@@ -737,28 +768,28 @@ class EvacuationApp:
                     f"  scanned: {len(r.expanded_order)} rooms",
                     f"  time  : {r.runtime_ms:.2f} ms",
                 ]):
-                    rtext(self.screen, line, px, 484 + i * 17, self.font_small, WHITE)
+                    rtext(self.screen, line, px, 514 + i * 17, self.font_small, WHITE)
             else:
-                rtext(self.screen, "NO ROUTE FOUND", px, 463, self.font_med, RED, glow=True)
+                rtext(self.screen, "NO ROUTE FOUND", px, 493, self.font_med, RED, glow=True)
                 rtext(self.screen, "  Clear a blocked corridor",
-                      px, 486, self.font_small, GRAY)
+                      px, 516, self.font_small, GRAY)
                 rtext(self.screen, "  or change your start room.",
-                      px, 502, self.font_small, GRAY)
+                      px, 532, self.font_small, GRAY)
         else:
             rtext(self.screen, "  Run search to see results.",
-                  px, 463, self.font_small, GRAY)
+                  px, 493, self.font_small, GRAY)
 
-        pygame.draw.line(self.screen, GREEN_DIM, (px, 594), (px + bw, 594))
+        pygame.draw.line(self.screen, GREEN_DIM, (px, 624), (px + bw, 624))
 
         # tips
-        rtext(self.screen, "TIPS", px, 598, self.font_small, AMBER)
+        rtext(self.screen, "TIPS", px, 628, self.font_small, AMBER)
         for i, tip in enumerate([
             "L-click room  -> set survivor start",
             "R-click room  -> toggle infestation",
             "Click red line -> block / unblock",
-            "SPACE run  C compare  R reset  ESC quit",
+            "SPACE run  C compare  R reset  L labels  ESC quit",
         ]):
-            rtext(self.screen, "  " + tip, px, 614 + i * 17, self.font_small, GRAY)
+            rtext(self.screen, "  " + tip, px, 644 + i * 17, self.font_small, GRAY)
 
     def _draw_status(self):
         pygame.draw.rect(self.screen, (4, 8, 8), (0, HEIGHT - 70, MAP_WIDTH, 70))
@@ -818,6 +849,8 @@ class EvacuationApp:
                         self.algorithm = "Greedy"; audio.play("blip_lo")
                     elif ev.key == pygame.K_4:
                         self.algorithm = "A*";     audio.play("blip_lo")
+                    elif ev.key == pygame.K_l:
+                        self.show_labels = not self.show_labels; audio.play("blip_lo")
                     elif ev.key in (pygame.K_PLUS, pygame.K_EQUALS):
                         self.weights["radiation"] = min(100.0, self.weights["radiation"] + 5)
                     elif ev.key == pygame.K_MINUS:

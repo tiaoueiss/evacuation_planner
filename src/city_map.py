@@ -73,6 +73,8 @@ class CityMap:
     def __init__(self):
         self.nodes = {}
         self.edges = []
+        
+        # who each node is connected to, and the edge connecting them
         self.adjacency = {}
 
     # ---------- building ----------
@@ -81,6 +83,8 @@ class CityMap:
                  infestation=0.0, radiation=0.0, is_exit=False, label=None):
         node = Node(node_id, x, y, floor, infestation, radiation, is_exit, label)
         self.nodes[node_id] = node
+        
+        #  creates empty list of neighbors for this node in the adjacency dict
         self.adjacency[node_id] = []
         return node
 
