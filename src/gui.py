@@ -245,7 +245,7 @@ class EvacuationApp:
                 self.screen.blit(noise, (0, 0))
 
             ts = fxs.render(
-                "UNIVERSITÉ SAINT-ESPRIT DE KASLIK  //  CSC474  //  EVACUATION PLANNER",
+                "EVACUATION PLANNER",
                 True, (108, 155, 115))
             self.screen.blit(ts, ((WIDTH - ts.get_width()) // 2, 22))
 
