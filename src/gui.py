@@ -6,12 +6,11 @@ sys.path.insert(0, os.path.dirname(__file__))
 from city_map import build_building_h, FLOOR_Y, FLOOR_ORDER
 import search, audio
 
-# ── constants ─────────────────────────────────────────────────────────────────
 WIDTH      = 1280
 HEIGHT     = 720
 MAP_WIDTH  = 960
 PANEL_X    = MAP_WIDTH
-PANEL_W    = WIDTH - MAP_WIDTH   # 320 px
+PANEL_W    = WIDTH - MAP_WIDTH
 
 NODE_RADIUS = 20
 
@@ -33,7 +32,6 @@ WEIGHT_STEP = {"distance": 0.5, "infestation": 5.0, "radiation": 5.0}
 WEIGHT_MAX  = {"distance": 5.0, "infestation": 50.0, "radiation": 100.0}
 
 
-# ── module-level helpers ───────────────────────────────────────────────────────
 
 def rtext(surf, text, x, y, font, color=GREEN, glow=False):
     if glow:
@@ -43,7 +41,6 @@ def rtext(surf, text, x, y, font, color=GREEN, glow=False):
         surf.blit(s, (x - 1, y - 1))
     surf.blit(font.render(text, True, color), (x, y))
 
-# for the screen effect
 def scanlines(surf, alpha=28):
     ov = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
     for y in range(0, HEIGHT, 3):
@@ -63,7 +60,6 @@ def build_vignette():
                 pygame.draw.rect(ov, (0, 0, 0, a), (bx, by, 16, 16))
     return ov
 
-# used to check wether the mouse is close enough to an edge to toggle it, and to draw the dashed line for blocked corridors
 def pt_seg_dist(px, py, x1, y1, x2, y2):
     dx, dy = x2 - x1, y2 - y1
     if dx == dy == 0:
@@ -86,7 +82,6 @@ def dashed_line(surf, color, start, end, width=1, dash=8, gap=6):
                          (x1 + dx*t2, y1 + dy*t2), width)
 
 
-# ── particle ──────────────────────────────────────────────────────────────────
 
 class SporeParticle:
     __slots__ = ("x", "y", "vx", "vy", "life", "max_life", "size")
@@ -111,7 +106,6 @@ class SporeParticle:
         surf.blit(s, (int(self.x - 3), int(self.y - 3)))
 
 
-# ── main app ──────────────────────────────────────────────────────────────────
 
 class EvacuationApp:
 
@@ -128,7 +122,7 @@ class EvacuationApp:
         self.font_small = pygame.font.SysFont("consolas", 12)
 
         self.city       = build_building_h()
-        self.start_node = 30           # F3 Chapel (default)
+        self.start_node = 30
         self.algorithm  = "A*"
         self.weights    = {"distance": 1.0, "infestation": 10.0, "radiation": 30.0}
 
@@ -152,13 +146,11 @@ class EvacuationApp:
         self._init_buttons()
         audio.start_ambient()
 
-    # ── button layout ────────────────────────────────────────────────────────
 
     def _init_buttons(self):
         px = PANEL_X + 14
-        bw = PANEL_W - 28          # 278 px usable panel width
+        bw = PANEL_W - 28
 
-        # algorithm: 2 × 2 grid
         aw = (bw - 6) // 2
         self.algo_rects = {}
         for i, algo in enumerate(["BFS", "UCS", "Greedy", "A*"]):
@@ -172,7 +164,6 @@ class EvacuationApp:
         self.reset_rect   = pygame.Rect(px + half + 6, 306, half, 32)
         self.labels_rect  = pygame.Rect(px, 444, bw, 24)
 
-        # weight +/- (3 rows at y = 366, 390, 414)
         bx = px + bw - 26
         self.wt_rects = {}
         for i, key in enumerate(["distance", "infestation", "radiation"]):
@@ -180,7 +171,6 @@ class EvacuationApp:
             self.wt_rects[f"{key}+"] = pygame.Rect(bx, wy,      24, 11)
             self.wt_rects[f"{key}-"] = pygame.Rect(bx, wy + 13, 24, 11)
 
-    # ── button drawing helper ─────────────────────────────────────────────────
 
     def _btn(self, rect, label, font, *, active=False, hover=False, accent=GREEN):
         bg = (28, 52, 36) if (active or hover) else GREEN_DK
@@ -194,13 +184,8 @@ class EvacuationApp:
             rect.y + (rect.h - ts.get_height()) // 2,
         ))
 
-    # ── intro screen ─────────────────────────────────────────────────────────
 
     def _show_intro(self):
-        """
-        Fullscreen alien-invasion briefing shown at startup.
-        Returns True to continue, False if the user closed the window.
-        """
         fhuge = pygame.font.SysFont("consolas", 74, bold=True)
         fbig  = pygame.font.SysFont("consolas", 30, bold=True)
         fmed  = pygame.font.SysFont("consolas", 19)
@@ -220,7 +205,6 @@ class EvacuationApp:
             ("  [UB2] Server Room  HIVE   << ORIGIN POINT >>", True),
         ]
 
-        # pre-build static noise for glitch effect
         noise = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         for _ in range(280):
             pygame.draw.rect(noise, (210, 55, 55, random.randint(18, 75)),
@@ -235,12 +219,11 @@ class EvacuationApp:
         while running:
             elapsed = time.time() - start
 
-            # replay alarm every ~2.4 s
             if elapsed - last_alarm > 2.4:
                 audio.play("alarm", volume=0.82)
                 last_alarm = elapsed
 
-            if elapsed > 9.0:   # auto-advance
+            if elapsed > 9.0:
                 break
 
             for ev in pygame.event.get():
@@ -251,41 +234,33 @@ class EvacuationApp:
                 if ev.type in (pygame.KEYDOWN, pygame.MOUSEBUTTONDOWN):
                     running = False
 
-            # ── draw frame ───────────────────────────────────────────────────
             self.screen.fill((2, 2, 4))
 
-            # pulsing red alarm overlay
             alarm_a = int(55 * (0.5 + 0.5 * math.sin(elapsed * math.pi * 2.6)))
             ov = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
             ov.fill((170, 0, 0, alarm_a))
             self.screen.blit(ov, (0, 0))
 
-            # occasional glitch noise strip
             if random.random() < 0.12:
                 self.screen.blit(noise, (0, 0))
 
-            # ── university header ─────────────────────────────────────────────
             ts = fxs.render(
                 "UNIVERSITÉ SAINT-ESPRIT DE KASLIK  //  CSC474  //  EVACUATION PLANNER",
                 True, (108, 155, 115))
             self.screen.blit(ts, ((WIDTH - ts.get_width()) // 2, 22))
 
-            # ── BUILDING H (huge, pulsing red) ───────────────────────────────
             pulse = 0.72 + 0.28 * math.sin(elapsed * 3.8)
             rc = (int(218 * pulse), int(38 * pulse), int(38 * pulse))
             ts = fhuge.render("BUILDING   H", True, rc)
             self.screen.blit(ts, ((WIDTH - ts.get_width()) // 2, 50))
 
-            # separator
             lx = (WIDTH - 680) // 2
             pygame.draw.line(self.screen, (165, 28, 28), (lx, 158), (lx + 680, 158), 2)
 
-            # ── flashing warning ─────────────────────────────────────────────
             if math.sin(elapsed * 5.2) > 0:
                 ts = fbig.render("[!!]  ALIEN INVASION DETECTED  [!!]", True, RED)
                 self.screen.blit(ts, ((WIDTH - ts.get_width()) // 2, 172))
 
-            # ── typewriter message lines ──────────────────────────────────────
             box_x = (WIDTH - 720) // 2
             ty = 228
             for i, line in enumerate(LINES):
@@ -297,7 +272,6 @@ class EvacuationApp:
                 self.screen.blit(ts, (box_x, ty))
                 ty += 34
 
-            # ── loading bar ───────────────────────────────────────────────────
             bar_w  = 620
             bar_x  = (WIDTH - bar_w) // 2
             bar_y  = 340
@@ -309,7 +283,6 @@ class EvacuationApp:
             ts = fsm.render(f"EVACUATION PROTOCOL LOADING{dots:<4}", True, GREEN)
             self.screen.blit(ts, ((WIDTH - ts.get_width()) // 2, bar_y + 20))
 
-            # ── building floor overview box ───────────────────────────────────
             bx_, by_ = (WIDTH - 680) // 2, 378
             bh_ = 10 + len(FLOORS) * 19
             bg_s = pygame.Surface((680, bh_), pygame.SRCALPHA)
@@ -321,13 +294,11 @@ class EvacuationApp:
                 col = (165, 58, 58) if danger else (82, 162, 100)
                 rtext(self.screen, fl, bx_, by_ + 18 + i * 19, fxs, col)
 
-            # ── PRESS ANY KEY ─────────────────────────────────────────────────
             if math.sin(elapsed * 2.8) > 0:
                 ts = fmed.render("[ PRESS ANY KEY TO BEGIN EVACUATION ]",
                                  True, (165, 215, 172))
                 self.screen.blit(ts, ((WIDTH - ts.get_width()) // 2, 502))
 
-            # elapsed tag (bottom right)
             ts = fxs.render(f"T+{elapsed:.1f}s  //  THREAT ACTIVE", True, (130, 45, 45))
             self.screen.blit(ts, (WIDTH - ts.get_width() - 10, HEIGHT - 18))
 
@@ -337,7 +308,6 @@ class EvacuationApp:
 
         return True
 
-    # ── input ────────────────────────────────────────────────────────────────
 
     def hit_node(self, mx, my):
         for node in self.city.nodes.values():
@@ -418,7 +388,6 @@ class EvacuationApp:
             audio.play("blip_lo")
             return
 
-    # ── actions ───────────────────────────────────────────────────────────────
 
     def run_search(self):
         self.clear_animation()
@@ -470,7 +439,6 @@ class EvacuationApp:
         self.expanded_visible = set()
         self.path_progress    = 0
 
-    # ── update ────────────────────────────────────────────────────────────────
 
     def update(self):
         if self.expansion_anim:
@@ -503,7 +471,6 @@ class EvacuationApp:
             lines, ttl = self.popup
             self.popup = (lines, ttl - 1) if ttl > 0 else None
 
-    # ── draw ──────────────────────────────────────────────────────────────────
 
     def draw(self):
         self.screen.fill(BG)
@@ -582,7 +549,6 @@ class EvacuationApp:
             pygame.draw.line(gs, (78, 212, 232, 62), (u.x, u.y), (v.x, v.y), 14)
             self.screen.blit(gs, (0, 0))
             pygame.draw.line(self.screen, PATH_COLOR, (u.x, u.y), (v.x, v.y), 5)
-            # arrowhead
             dx, dy = v.x - u.x, v.y - u.y
             d = math.hypot(dx, dy)
             if d > 1:
@@ -665,11 +631,9 @@ class EvacuationApp:
         mpos = self.mouse_pos
         t    = time.time()
 
-        # title
         rtext(self.screen, "EVAC PROTOCOL v1.0", px, 12, self.font_big, GREEN, glow=True)
         rtext(self.screen, "// USEK BUILDING H //", px, 38, self.font_small, GREEN_DIM)
 
-        # threat bar
         threat = sum(n.infestation for n in self.city.nodes.values()) / len(self.city.nodes)
         tc = RED if threat > 0.5 else AMBER if threat > 0.25 else GREEN
         rtext(self.screen, f"THREAT: {threat:.0%}", px, 60, self.font_small, tc)
@@ -678,7 +642,6 @@ class EvacuationApp:
 
         pygame.draw.line(self.screen, GREEN_DIM, (px, 90), (px + bw, 90))
 
-        # survivor
         rtext(self.screen, "SURVIVOR", px, 96, self.font_small, AMBER)
         rtext(self.screen, f"  {self.city.nodes[self.start_node].label}",
               px, 112, self.font_med, WHITE)
@@ -687,7 +650,6 @@ class EvacuationApp:
 
         pygame.draw.line(self.screen, GREEN_DIM, (px, 150), (px + bw, 150))
 
-        # algorithm buttons
         rtext(self.screen, "ALGORITHM", px, 156, self.font_small, AMBER)
         for algo, rect in self.algo_rects.items():
             self._btn(rect, algo, self.font_small,
@@ -695,7 +657,6 @@ class EvacuationApp:
                       hover=rect.collidepoint(mpos),
                       accent=AMBER)
 
-        # RUN button (pulsing border)
         pulse_c = tuple(int(c * (0.65 + 0.35 * math.sin(t * 2.8))) for c in GREEN)
         hov_run = self.run_rect.collidepoint(mpos)
         pygame.draw.rect(self.screen, GREEN_DK, self.run_rect, border_radius=6)
@@ -708,7 +669,6 @@ class EvacuationApp:
             self.run_rect.y + (self.run_rect.h - ts.get_height()) // 2,
         ))
 
-        # compare / reset
         self._btn(self.compare_rect, "[=] COMPARE ALL", self.font_small,
                   hover=self.compare_rect.collidepoint(mpos), accent=AMBER)
         self._btn(self.reset_rect,   "[R] RESET MAP",   self.font_small,
@@ -716,7 +676,6 @@ class EvacuationApp:
 
         pygame.draw.line(self.screen, GREEN_DIM, (px, 344), (px + bw, 344))
 
-        # cost weights
         rtext(self.screen, "COST WEIGHTS", px, 348, self.font_small, AMBER)
         LABELS = {"distance": "Distance", "infestation": "Infestation",
                   "radiation": "Radiation"}
@@ -743,7 +702,6 @@ class EvacuationApp:
 
         pygame.draw.line(self.screen, GREEN_DIM, (px, 440), (px + bw, 440))
 
-        # labels toggle
         lbl_state = "ON" if self.show_labels else "OFF"
         lbl_color = GREEN if self.show_labels else GRAY
         self._btn(self.labels_rect, f"[L] SHOW LABELS: {lbl_state}", self.font_small,
@@ -753,7 +711,6 @@ class EvacuationApp:
 
         pygame.draw.line(self.screen, GREEN_DIM, (px, 472), (px + bw, 472))
 
-        # last result
         rtext(self.screen, "LAST RESULT", px, 476, self.font_small, AMBER)
         if self.last_result:
             r = self.last_result
@@ -781,7 +738,6 @@ class EvacuationApp:
 
         pygame.draw.line(self.screen, GREEN_DIM, (px, 624), (px + bw, 624))
 
-        # tips
         rtext(self.screen, "TIPS", px, 628, self.font_small, AMBER)
         for i, tip in enumerate([
             "L-click room  -> set survivor start",
@@ -817,11 +773,10 @@ class EvacuationApp:
             col = AMBER if i == 0 else (GRAY if line == "" else WHITE)
             rtext(self.screen, line, x + 16, y + 14 + i * 22, self.font_med, col)
 
-    # ── main loop ─────────────────────────────────────────────────────────────
 
     def run(self):
         if not self._show_intro():
-            return   # user closed window during intro
+            return
 
         running = True
         while running:

@@ -47,10 +47,7 @@ def _path_cost(city, path, weights):
     return total
 
 
-# ---------------- BFS ----------------
-
 def bfs(city, start, weights=None):
-    """Treats every edge as cost 1. Minimizes hops, NOT safety."""
     t0 = time.perf_counter()
     weights = weights or {"distance": 1.0}
 
@@ -87,10 +84,7 @@ def bfs(city, start, weights=None):
                         runtime, True, found_goal)
 
 
-# ---------------- UCS ----------------
-
 def ucs(city, start, weights):
-    """Optimal under our weighted cost function."""
     t0 = time.perf_counter()
     counter = itertools.count()
 
@@ -131,10 +125,7 @@ def ucs(city, start, weights):
                         frontier_history, runtime, True, found_goal)
 
 
-# ---------------- Greedy ----------------
-
 def greedy(city, start, weights):
-    """Expands by heuristic only. Fast but ignores accumulated danger."""
     t0 = time.perf_counter()
     counter = itertools.count()
     exits = city.exits()
@@ -175,10 +166,7 @@ def greedy(city, start, weights):
                         frontier_history, runtime, True, found_goal)
 
 
-# ---------------- A* ----------------
-
 def astar(city, start, weights):
-    """f(n) = g(n) + h(n), with h = w_d * euclidean to nearest exit."""
     t0 = time.perf_counter()
     counter = itertools.count()
     exits = city.exits()

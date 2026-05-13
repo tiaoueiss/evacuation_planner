@@ -1,7 +1,3 @@
-"""
-Sanity tests for the search algorithms on the alien Building H scenario.
-Run from project root with:  python tests/test_search.py
-"""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -13,7 +9,6 @@ def test_all_algos_find_an_exit():
     city = build_building_h()
     weights = {"distance": 1.0, "infestation": 10.0, "radiation": 30.0}
 
-    # try a few different start positions
     for start, label in [(50, "UB2 server room"), (33, "F3 library"),
                          (11, "F1 atrium"), (51, "UB2 HIVE itself")]:
         for name in ["BFS", "UCS", "Greedy", "A*"]:
@@ -38,10 +33,9 @@ def test_ucs_optimal_vs_others():
 
 
 def test_astar_avoids_hive():
-    """With high radiation weight, A* should NOT route through the HIVE (51)."""
     city = build_building_h()
     weights = {"distance": 1.0, "infestation": 5.0, "radiation": 100.0}
-    r = search.run("A*", city, 50, weights)  # start in UB2 server room
+    r = search.run("A*", city, 50, weights)
     print(f"  A* from UB2 Server Room: {r.path}")
     print(f"  cost={r.total_cost:.1f}, expanded={len(r.expanded_order)}")
     print()
@@ -50,9 +44,8 @@ def test_astar_avoids_hive():
 def test_blocking_path_reroutes():
     city = build_building_h()
     weights = {"distance": 1.0, "infestation": 10.0, "radiation": 30.0}
-    r1 = search.run("A*", city, 30, weights)  # F3 chapel
+    r1 = search.run("A*", city, 30, weights)
     print(f"  before blocking:  {r1.path}  cost={r1.total_cost:.1f}")
-    # block the first edge of the path
     if len(r1.path) >= 2:
         city.set_blocked(r1.path[0], r1.path[1], True)
     r2 = search.run("A*", city, 30, weights)
@@ -61,7 +54,6 @@ def test_blocking_path_reroutes():
 
 
 def test_compare_table():
-    """Print a comparison table from a hard start (deep in the hive)."""
     city = build_building_h()
     weights = {"distance": 1.0, "infestation": 10.0, "radiation": 30.0}
     print(f"  {'Algo':8s} {'cost':>8s}  {'expanded':>9s}  {'hops':>5s}  exit")

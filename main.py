@@ -1,8 +1,3 @@
-"""
-Entry point for the Building H Alien Evacuation Planner.
-Run from the project root with:
-    python main.py
-"""
 import sys
 import os
 
